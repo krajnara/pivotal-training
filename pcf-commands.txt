@@ -1,0 +1,124 @@
+# Delete apps...
+for app in `cf apps | cut -d " " -f1 | tail +5`; do echo $app; cf delete $app -r -f; done
+
+# Delete services
+for srv in `cf services | cut -d " " -f1 | tail +5`; do echo $service; cf delete-service $srv -f; done
+
+
+# Tomcat start/stop
+/usr/local/opt/tomee-plume/libexec/bin/startup.sh
+/usr/local/opt/tomee-plume/libexec/bin/shutdown.sh
+
+cf set-env moviefun MOVIEFUN_DATASOURCES_MOVIES_URL jdbc:mysql://10.0.16.78:3306/cf_9b4974ec_716e_486f_a3c7_156cd90ae3d4?user=ICJep1yfPkymRFuG\u0026password=hFggUvqkuAoDF3qj
+cf set-env moviefun MOVIEFUN_DATASOURCES_MOVIES_USERNAME ICJep1yfPkymRFuG
+cf set-env moviefun MOVIEFUN_DATASOURCES_MOVIES_PASSWORD hFggUvqkuAoDF3qj
+cf set-env moviefun MOVIEFUN_DATASOURCES_ALBUMS_URL jdbc:mysql://10.0.16.78:3306/cf_daa9336c_1017_449d_9193_b8179de473c1?user=9D93WKPK0EyRAWnn\u0026password=JgP4ZMYeoK7BheE6
+cf set-env moviefun MOVIEFUN_DATASOURCES_ALBUMS_USERNAME 9D93WKPK0EyRAWnn
+cf set-env moviefun MOVIEFUN_DATASOURCES_ALBUMS_PASSWORD JgP4ZMYeoK7BheE6
+
+
+cf set-env moviefun MOVIEFUN_DATASOURCES_MOVIES_JDBCURL jdbc:mysql://10.0.16.78:3306/cf_9b4974ec_716e_486f_a3c7_156cd90ae3d4?user=ICJep1yfPkymRFuG\u0026password=hFggUvqkuAoDF3qj
+cf set-env moviefun MOVIEFUN_DATASOURCES_ALBUMS_JDBCURL jdbc:mysql://10.0.16.78:3306/cf_daa9336c_1017_449d_9193_b8179de473c1?user=9D93WKPK0EyRAWnn\u0026password=JgP4ZMYeoK7BheE6
+
+
+cf set-env moviefun S3_ENDPOINTURL http://s3.amazonaws.com 
+cf set-env moviefun S3_ACCESSKEY AKIAI2OUIIZ52YEIVS5A
+cf set-env moviefun S3_SECRETKEY 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
+cf set-env moviefun S3_BUCKETNAME cf-4a965ecf-9e24-489d-92b4-97e17f369aa5
+
+
+cf ssh -L 63306:10.0.16.78:3306 moviefun
+# Try this from a different window. Running ssh opens up the session.
+mysql -u TIbnisM8me0K9zxl -h 0 -p CwVYKVkeVVKrDhXh -D cf_d7c35958_5e8e_45bb_90e4_96f1fd3b56a1 -P 63306
+
+# AWS CLI
+AMB00687:movie-fun-code 103209$ aws configure
+AWS Access Key ID [None]: AKIAI2OUIIZ52YEIVS5A
+AWS Secret Access Key [None]: 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
+Default region name [None]: 
+Default output format [None]: 
+AMB00687:movie-fun-code 103209$ aws s3 cp src/main/resources/albums.csv s3://cf-4a965ecf-9e24-489d-92b4-97e17f369aa5/albums.csv
+upload: src/main/resources/albums.csv to s3://cf-4a965ecf-9e24-489d-92b4-97e17f369aa5/albums.csv
+
+
+# RabbitMQ start
+/usr/local/Cellar/rabbitmq/3.6.11/sbin/rabbitmq-server
+
+# Local runs
+export SPRING_PROFILES_ACTIVE=development
+
+export S3_ENDPOINTURL=http://127.0.0.1:9000
+export S3_ACCESSKEY=QH1KBXMXQHOI5RC6FGW3
+export S3_SECRETKEY=FjLQzpy1birevESsLDIQQxgWfM48X2bqxX1T5bVf
+export S3_BUCKETNAME=moviefun
+
+    @Value("${s3.endpointUrl}") String s3EndpointUrl;
+    @Value("${s3.accessKey}") String s3AccessKey;
+    @Value("${s3.secretKey}") String s3SecretKey;
+    @Value("${s3.bucketName}") String s3BucketName;
+
+    @Bean
+    public BlobStore blobStore() {
+        AWSCredentials credentials = new BasicAWSCredentials(s3AccessKey, s3SecretKey);
+        AmazonS3Client s3Client = new AmazonS3Client(credentials);
+        s3Client.setEndpoint(s3EndpointUrl);
+
+        return new S3Store(s3Client, s3BucketName);
+    }
+
+
+# ON PCF
+export SPRING_PROFILES_ACTIVE=development
+
+cf set-env album-service S3_ENDPOINTURL http://s3.amazonaws.com
+cf set-env album-service S3_ACCESSKEY AKIAIKZO2JJXXDWXTCGQ
+cf set-env album-service S3_SECRETKEY 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
+cf set-env album-service S3_BUCKETNAME cf-4a965ecf-9e24-489d-92b4-97e17f369aa5
+
+
+cf set-env movie-fun-app S3_ENDPOINTURL http://s3.amazonaws.com
+cf set-env movie-fun-app S3_ACCESSKEY AKIAIKZO2JJXXDWXTCGQ
+cf set-env movie-fun-app S3_SECRETKEY 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
+cf set-env movie-fun-app S3_BUCKETNAME cf-4a965ecf-9e24-489d-92b4-97e17f369aa5
+cf set-env movie-fun-app MOVIES_URL //movie-service/movies
+cf set-env movie-fun-app ALBUMS_URL //album-service/albums
+
+
+https://basic-sso.login.system.cumuluslabs.io/oauth/authorize?client_id=e5cfa839-547d-4636-939e-68894fe4516e&redirect_uri=http://movie-fun-app-rn.apps.cumuluslabs.io&response_type=code&state=BuhVza
+
+---
+memory: 1G
+instances: 1
+applications:
+- name: albums-service
+  path: applications/albums-service/build/libs/album-service-1.1.0-SNAPSHOT.jar
+  services:
+  - movies-mysql
+  - moviefun-s3
+  routes:
+  - route: albums-service-rn.apps.cumuluslabs.io
+  env:
+    S3_ENDPOINTURL: http://s3.amazonaws.com
+    S3_ACCESSKEY: AKIAIKZO2JJXXDWXTCGQ
+    S3_SECRETKEY: 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
+    S3_BUCKETNAME: cf-4a965ecf-9e24-489d-92b4-97e17f369aa5
+- name: movies-service
+  path: applications/movies-service/build/libs/movie-service-1.1.0-SNAPSHOT.jar
+  services:
+  - movies-mysql
+  routes:
+  - route: movies-service-rn.apps.cumuluslabs.io
+- name: movie-fun-app
+  path: applications/movie-fun-app/build/libs/movie-fun-app-1.1.0-SNAPSHOT.war
+  services:
+  - movies-mysql
+  - moviefun-s3
+  routes:
+  - route: movie-fun-app-rn.apps.cumuluslabs.io
+  env:
+    S3_ENDPOINTURL: http://s3.amazonaws.com
+    S3_ACCESSKEY: AKIAIKZO2JJXXDWXTCGQ
+    S3_SECRETKEY: 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
+    S3_BUCKETNAME: cf-4a965ecf-9e24-489d-92b4-97e17f369aa5
+    ALBUMS_URL: http://album-service.cfapps-02.haas-66.pez.pivotal.io/albums
+    MOVIES_URL: http://movie-service.cfapps-02.haas-66.pez.pivotal.io/movies
